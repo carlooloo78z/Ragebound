@@ -4,7 +4,7 @@ import {createMarketUI} from './market-ui.js';
 import {Preferences} from './preferences.js';
 import {GameAudio} from './audio.js';
 import {Interface} from './ui.js';
-import {STYLES,CHARACTERS,SPECIALS} from './styles.js';
+import {STYLES,CHARACTERS,SPECIALS,attackIsLow} from './styles.js';
 import {Input} from './input.js';
 import {Fighter,resolveCombat,resolveExchange,separateFighters} from './combat.js';
 import {Renderer} from './renderer.js';
@@ -26,7 +26,7 @@ let targetWins=2,screen='title',arenaId='dojo';
 let phase='countdown',phaseUntil=150,round=1,wins=[0,0],roundStart=150,freeze=0,difficulty='normal',lastEvent='Create space. Make them miss. Punish the recovery.';
 function styleUI(){
  levelUI();
- $('styles').replaceChildren(...STYLES.map((style,i)=>{const button=document.createElement('button');button.className=players[selected].style===style?'active':'';button.innerHTML='<em>0'+(i+1)+'</em><b>'+style.name+'</b><small>'+style.description+'</small>';button.setAttribute?.('aria-pressed',String(players[selected].style===style));button.onclick=()=>{players[selected].style=style;restart();styleUI()};return button}));
+ $('styles').replaceChildren(...STYLES.map((style,i)=>{const button=document.createElement('button');button.className=players[selected].style===style?'active':'';button.innerHTML='<em>'+String(i+1).padStart(2,'0')+'</em><b>'+style.name+'</b><small>'+style.description+'</small><small>HEAVY: '+style.heavy+'</small>';button.setAttribute?.('aria-pressed',String(players[selected].style===style));button.onclick=()=>{players[selected].style=style;restart();saveSetup();styleUI()};return button}));
  $('characters').replaceChildren(...CHARACTERS.map(character=>{
  const button=document.createElement('button');button.className='character-card '+(players[selected].character===character?'active':'');
  button.setAttribute?.('aria-pressed',String(players[selected].character===character));
@@ -35,12 +35,12 @@ function styleUI(){
  button.onclick=()=>{players[selected].character=character;restart();styleUI()};return button;
  }));
  players.forEach((p,i)=>$('style'+i).textContent=p.character.name+' / '+p.style.name);
- $('selection-label').textContent=(selected===0?'CUSTOMISE PLAYER 01':'CUSTOMISE OPPONENT / PLAYER 02')+' / '+CHARACTERS.length+' FIGHTERS';
+ $('selection-label').textContent=(selected===0?'CUSTOMISE PLAYER 01':'CUSTOMISE OPPONENT / PLAYER 02')+' / '+CHARACTERS.length+' FIGHTERS / '+STYLES.length+' STYLES';
  updateVersus();
 }
 document.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{selected=Number(b.dataset.player);document.querySelectorAll('[data-player]').forEach(n=>n.classList.toggle('active',n===b));styleUI()});
 function levelUI(){
- const descriptions={beginner:'LEVEL 1: relaxed reactions and frequent openings. Learn the basics.',easy:'LEVEL 2: slower reactions and lighter defense. Practice your timing.',normal:'LEVEL 3: balanced pressure, spacing and defense.',hard:'LEVEL 4: faster reads and disciplined defense. Punish carefully.',expert:'LEVEL 5: the fastest reactions and strongest defense. No extra health or damage.'};
+ const descriptions={beginner:'LEVEL 1: relaxed reactions and frequent openings. Learn the basics.',easy:'LEVEL 2: slower reactions and lighter defense. Practice your timing.',normal:'LEVEL 3: balanced pressure, spacing and defense.',hard:'LEVEL 4: much faster reactions, tighter defense and sustained pressure. Bait a commitment and punish it.',expert:'LEVEL 5: lightning reactions, relentless pressure and near-perfect defense. Force a mistake. No extra health or damage.'};
  $('cpu-levels').replaceChildren(...Object.entries(DIFFICULTIES).map(([key,level],i)=>{
  const button=document.createElement('button');button.className=key===difficulty?'active':'';
  button.setAttribute?.('aria-pressed',String(key===difficulty));
@@ -224,7 +224,7 @@ function update(){
  separateFighters(players);
  resolveExchange(players,tick,(i,x,y,block,kind)=>{const p=players[i];sound.cue(kind);
  renderer.effects.push({x,y,block,tick});renderer.cheerUntil=tick+35;freeze=kind==='parry'?6:kind==='counter'?5:3;
- const who=i===0?'P1':'P2';lastEvent=kind==='parry'?'Perfect guard: attacker exposed. Counter now.':kind==='tech'?'Throw escaped. Reset your spacing.':kind==='punish'?who+' punished recovery (+20%).':kind==='counter'?who+' interrupted an attack (+20%).':block?'Guard absorbs damage, but loses strength.':p.isGrapple()?'Throw beats guard. Press throw on contact to escape.':p.attackPosture==='crouching'?'Low strike: crouch + block to defend.':p.attackPosture==='air'?'Aerial strike: stand + block to defend.':who+' landed '+p.move?.label+'.';
+ const who=i===0?'P1':'P2';lastEvent=kind==='parry'?'Perfect guard: attacker exposed. Counter now.':kind==='tech'?'Throw escaped. Reset your spacing.':kind==='punish'?who+' punished recovery (+20%).':kind==='counter'?who+' interrupted an attack (+20%).':block?'Guard absorbs damage, but loses strength.':p.isGrapple()?'Throw beats guard. Press throw on contact to escape.':attackIsLow(p)?'Low strike: crouch + block to defend.':p.attackPosture==='air'?'Aerial strike: stand + block to defend.':who+' landed '+p.move?.label+'.';
  });
  input.endFrame();if(training){if(players.some(p=>p.hp<=0)){if(!trainingKO)trainingKO=tick+75;if(tick>=trainingKO)resetTraining()}return}if(players.some(p=>p.hp<=0)||remaining===0)finishRound();
 }

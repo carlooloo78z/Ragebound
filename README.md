@@ -2,8 +2,16 @@
 
 **EVERY FIGHT HAS A LEGEND.**
 
-A browser fighting game with 12 fighters, five martial-arts styles, eight
+A browser fighting game with 12 fighters, ten martial-arts styles, eight
 arenas, five computer difficulties and local two-player matches.
+
+Choose Kung Fu, Judo, Boxing, Muay Thai, Jiu-Jitsu, Karate, Taekwondo,
+Capoeira, Wrestling or Kickboxing. Each discipline has its own strengths;
+all fighters can use every style, and selected styles save in this browser.
+
+Master and Champion now react and reconsider actions roughly three times
+faster, make fewer defensive mistakes and keep up more pressure. Fighter
+health and damage are unchanged; levels 1-3 retain their original behavior.
 
 Fight through multiple rounds, earn fictional coins from match results and
 crowd support, buy cosmetics, and upgrade your fighter. The game includes

@@ -1,3 +1,4 @@
+import {attackIsLow} from './styles.js';
 const clamp01=value=>Math.max(0,Math.min(1,value));
 const ease=value=>{const t=clamp01(value);return t*t*(3-2*t)};
 const mixPoint=(a,b,t)=>a.map((value,i)=>value+(b[i]-value)*t);
@@ -45,9 +46,16 @@ function rig(p,changes={}){
  return pose;
 }
 
+const STYLE_STANCES={
+  karate:{hand:[33,-80],rearHand:[-7,-67],backFoot:[-30,-2],frontFoot:[34,-2]},
+  taekwondo:{hip:[-4,-53],shoulder:[-9,-81],head:[-8,-102],hand:[25,-83],rearHand:[-12,-78],backFoot:[-22,-2],frontFoot:[34,-2]},
+  capoeira:{hip:[-5,-46],shoulder:[-12,-73],head:[-10,-94],hand:[29,-69],rearHand:[-22,-66],backFoot:[-33,-2],frontFoot:[33,-2]},
+  wrestling:{hip:[-5,-43],shoulder:[10,-68],head:[13,-88],hand:[38,-65],rearHand:[17,-66],backFoot:[-29,-2],frontFoot:[30,-2]},
+  kickboxing:{hand:[22,-98],rearHand:[-2,-94],backFoot:[-26,-2],frontFoot:[31,-2]}
+};
 function restPose(p){
  const low=p.crouching&&p.grounded;
- return rig(p,low?{hip:[-2,-27],shoulder:[1,-54],head:[2,-74],hand:[26,-62],rearHand:[0,-60]}:!p.grounded?{backFoot:[-18,-22],frontFoot:[25,-15]}:{});
+ return rig(p,low?{hip:[-2,-27],shoulder:[1,-54],head:[2,-74],hand:[26,-62],rearHand:[0,-60]}:!p.grounded?{backFoot:[-18,-22],frontFoot:[25,-15]}:STYLE_STANCES[p.style.stance]||{});
 }
 
 function samplePoses(keys,frame){
@@ -89,22 +97,37 @@ export function fighterPose(p,tick=0,presentation=tick){
    const total=p.move.startup+p.move.active+p.move.recovery;
    return mixPose(idle,joined,ease(frame/5)*ease((total-frame-1)/5));
   }
-  const {startup,active,recovery,type}=p.move,reach=p.style.reach*p.move.reach,low=p.attackPosture==='crouching',air=p.attackPosture==='air';
+  const {startup,active,recovery,type,pose:form}=p.move,reach=p.style.reach*p.move.reach,low=attackIsLow(p),air=p.attackPosture==='air';
   const height=low?28:0;
   let load,contact,retract;
-  if(type==='kick'||type==='heavy'&&p.style.kind==='knee'){
-   const knee=type==='heavy',step=air?Math.max(0,reach-101):Math.max(0,reach-98),support=[step-25,air?-22:-2];
+  if(form==='sweep'&&!air){
+   const step=Math.max(0,reach-92),support=[step-25,-2];
+   load=rig(p,{hip:[step-6,-28],shoulder:[step-13,-53],head:[step-12,-74],hand:[step+24,-43],rearHand:[step-19,-41],backFoot:support,frontFoot:[step+24,-8]});
+   contact=rig(p,{hip:[step+11,-27],shoulder:[step-5,-55],head:[step-9,-75],hand:[step+23,-47],rearHand:[step-25,-37],backFoot:support,frontFoot:[reach-9,-12]});
+   retract=load;
+  }else if(type==='kick'||['roundhouse','sidekick','crescent','sweep'].includes(form)||type==='heavy'&&p.style.kind==='knee'){
+   const knee=type==='heavy'&&p.style.kind==='knee',step=air?Math.max(0,reach-101):Math.max(0,reach-98),support=[step-25,air?-22:-2];
    load=rig(p,{hip:[step,-49+height*.7],shoulder:[step-5,-82+height],head:[step-4,-102+height],hand:[step+18,-91+height],rearHand:[step,-91+height],backFoot:support,frontFoot:[step+34,-29+height*.3]});
    contact=rig(p,{hip:[step+17,-48+height*.7],shoulder:[step+3,-82+height],head:[step+2,-102+height],hand:[step+21,-92+height],rearHand:[step+5,-91+height],backFoot:support,frontFoot:knee?[step+48,-36+height*.6]:[reach-8,low?-22:air?-53:-62]});
+   if(form==='sidekick')contact=rig(p,{...contact,shoulder:[step-2,-78+height],head:[step-4,-99+height],hand:[step+24,-87+height],rearHand:[step-12,-75+height],frontFoot:[reach-8,low?-22:air?-53:-57]});
+   if(form==='crescent')contact=rig(p,{...contact,shoulder:[step-6,-79+height],head:[step-8,-100+height],hand:[step+17,-86+height],rearHand:[step-25,-65+height]});
    retract=load;
   }else{
    const grapple=type==='throw'||type==='heavy'&&['throw','submission'].includes(p.style.kind);
    const travel=grapple?8:Math.max(4,reach-63),punchY=low?-39:air?-61:-81;
    load=rig(p,{...idle,shoulder:[-5,-82+height],head:[-4,-102+height],hand:[8,-81+height]});
    contact=rig(p,{hip:[travel*.45,-49+height*.8],shoulder:[travel,-82+height],head:[travel-2,-102+height],hand:[grapple?49:reach-5,punchY],rearHand:grapple?[36,punchY+6]:[travel+1,-91+height],backFoot:idle.backFoot,frontFoot:[28+travel*.3,air?-15:-2]});
+   if(form==='straight')contact=rig(p,{...contact,rearHand:[travel-12,-62+height],frontFoot:[35+travel*.3,air?-15:-2]});
    retract=rig(p,{...idle,shoulder:[travel*.35,-82+height],head:[travel*.35,-102+height],hand:[29,-88+height]});
+   if(form==='straight')retract=rig(p,{...idle,shoulder:[travel*.15,-82+height],head:[travel*.15+1,-102+height],hand:[34,-78+height],rearHand:[-3,-64+height]});
+   if(form==='bodylock'){
+    load=rig(p,{...idle,hip:[-8,-44+height*.4],shoulder:[5,-68+height*.5],head:[8,-90+height*.5],hand:[30,-58+height*.4],rearHand:[8,-61+height*.4]});
+    contact=rig(p,{...contact,hip:[6,-42+height*.4],shoulder:[23,-66+height*.5],head:[25,-86+height*.5],hand:[58,-55+height*.4],rearHand:[44,-59+height*.4]});
+    retract=load;
+   }
   }
-  return samplePoses([[0,idle],[startup*.55,load],[startup,contact],[startup+active,contact],[startup+active+recovery*.42,retract],[startup+active+recovery-1,idle]],frame);
+  const loadAt=startup*(type==='light'&&startup<7?.5:.55);
+  return samplePoses([[0,idle],[loadAt,load],[startup,contact],[startup+active,contact],[startup+active+recovery*.42,retract],[startup+active+recovery-1,idle]],frame);
  }
  if(p.state==='block')return rig(p,{...idle,hand:[18,-100+(p.crouching?28:0)],rearHand:[7,-86+(p.crouching?28:0)]});
  if(['hit','guardbreak','defeat'].includes(p.state))return rig(p,{...idle,hip:[-3,idle.hip[1]],shoulder:[-12,idle.shoulder[1]+3],head:[-15,idle.head[1]+3],hand:[16,idle.hand[1]+10]});

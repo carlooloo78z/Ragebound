@@ -3,7 +3,29 @@ export const STYLES = [
  {name:'Judo',description:'Close-range throws / guard pressure',speed:3.8,reach:68,damage:9,color:'#ded4b9',heavy:'Hip throw',kind:'throw',recovery:1},
  {name:'Boxing',description:'Quick footwork / evasive heavy',speed:5.1,reach:76,damage:8,color:'#e7ad70',heavy:'Slip & cross',kind:'dodge',recovery:.95},
  {name:'Muay Thai',description:'Long kicks / powerful knees',speed:4,reach:96,damage:9,color:'#bc9b7e',heavy:'Rising knee',kind:'knee',recovery:1.1},
- {name:'Jiu-Jitsu',description:'Takedowns / ground control',speed:3.7,reach:65,damage:8,color:'#9fbbb1',heavy:'Ground lock',kind:'submission',recovery:1}
+ {name:'Jiu-Jitsu',description:'Takedowns / ground control',speed:3.7,reach:65,damage:8,color:'#9fbbb1',heavy:'Ground lock',kind:'submission',recovery:1},
+ {name:'Karate',description:'Quick straight counters / measured footwork',speed:4.4,reach:88,damage:8,color:'#f0cf81',heavy:'Reverse punch',kind:'strike',stance:'karate',recovery:.92,moves:{
+  light:{label:'Straight jab',startup:6,recovery:16,damage:.95},
+  heavy:{label:'Reverse punch',startup:17,recovery:28,reach:1.2,damage:1.7,knockback:32,pose:'straight'}
+ }},
+ {name:'Taekwondo',description:'Long, quick kicks / weaker close punches',speed:4.8,reach:86,damage:7,color:'#86ceff',heavy:'Turning side kick',kind:'kick',stance:'taekwondo',recovery:1,preferredRange:115,moves:{
+  light:{label:'Short straight',reach:.85,damage:.85},
+  kick:{label:'Snap roundhouse',startup:11,recovery:27,reach:1.65,damage:1.45,pose:'roundhouse'},
+  heavy:{label:'Turning side kick',startup:23,recovery:33,reach:1.65,damage:1.9,knockback:40,pose:'sidekick'}
+ }},
+ {name:'Capoeira',description:'Mobile low sweeps / punishable recovery',speed:4.9,reach:82,damage:7,color:'#79e5ae',heavy:'Low sweep',kind:'flow',stance:'capoeira',recovery:.95,preferredRange:100,moves:{
+  kick:{label:'Crescent kick',startup:14,recovery:25,reach:1.5,damage:1.35,pose:'crescent'},
+  heavy:{label:'Low sweep',startup:18,active:4,recovery:34,reach:1.5,damage:1.65,knockback:32,hitLevel:'low',pose:'sweep'}
+ }},
+ {name:'Wrestling',description:'Powerful body-lock throws / slow approach',speed:3.6,reach:70,damage:9,color:'#ed9b7f',heavy:'Body-lock slam',kind:'throw',stance:'wrestling',recovery:1.05,preferredRange:58,moves:{
+  throw:{label:'Body toss',startup:10,recovery:32,reach:.85,damage:1.85,stun:35,knockback:75,pose:'bodylock'},
+  heavy:{label:'Body-lock slam',startup:19,active:4,recovery:35,reach:1.1,damage:2,stun:37,pose:'bodylock'}
+ }},
+ {name:'Kickboxing',description:'Balanced punches / fast recovering kicks',speed:4.5,reach:91,damage:8,color:'#e9a4d8',heavy:'Power roundhouse',kind:'strike',stance:'kickboxing',recovery:1.02,preferredRange:100,moves:{
+  light:{label:'Boxing jab',recovery:16,reach:.95},
+  kick:{label:'Quick roundhouse',startup:12,recovery:22,reach:1.45,damage:1.25,pose:'roundhouse'},
+  heavy:{label:'Power roundhouse',startup:20,recovery:30,reach:1.35,damage:1.85,guardDamage:32,pose:'roundhouse'}
+ }}
 ];
 export const MOVES={
  light:{startup:7,active:3,recovery:17,damage:1,reach:1,stun:12,guardDamage:12,label:'Jab'},
@@ -12,10 +34,13 @@ export const MOVES={
  throw:{startup:12,active:3,recovery:34,damage:1.7,reach:.7,stun:33,guardDamage:0,label:'Throw'},
  special:{startup:27,active:6,recovery:43,damage:2.3,reach:1.6,stun:28,guardDamage:39,label:'Special'}
 };
+// Shared by collision, guarding, animation and delayed CPU observations. An
+// airborne sweep becomes an aerial overhead under the existing jump rules.
+export function attackIsLow(p){return p.attackPosture==='crouching'||p.attackPosture!=='air'&&p.move?.hitLevel==='low'}
 // Local authored boxes: style -> move -> animation frame. Supply dx, dy, w, h.
 export const FRAME_HITBOXES = Object.fromEntries(STYLES.map(style=>[style.name,Object.fromEntries(Object.keys(MOVES).map(type=>[type,p=>{
- const low=p.attackPosture==='crouching',air=p.attackPosture==='air',reach=style.reach*p.move.reach;
- const kick=type==='kick'||type==='special'&&['nyx','sora','zuri'].includes(p.character.id);
+ const low=attackIsLow(p),air=p.attackPosture==='air',reach=style.reach*p.move.reach;
+ const kick=type==='kick'||['roundhouse','sidekick','crescent','sweep'].includes(p.move.pose)||type==='special'&&['nyx','sora','zuri'].includes(p.character.id);
  const height=air?85:low?48:kick?35:50;
  return {dx:8,dy:-(low?50:air?75:kick?78:95),w:reach-8,h:height};
 }]))]));

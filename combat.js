@@ -1,4 +1,4 @@
-import {STYLES,MOVES,FRAME_HITBOXES,CHARACTERS,SPECIALS} from './styles.js';
+import {STYLES,MOVES,FRAME_HITBOXES,CHARACTERS,SPECIALS,attackIsLow} from './styles.js';
 export class Fighter {
  constructor(id){this.id=id;this.upgrades={health:0,power:0,speed:0,guard:0};this.character=CHARACTERS[0];this.style=STYLES[id?3:0];this.reset()}
  reset(){Object.assign(this,{x:this.id?860:340,y:0,vy:0,hp:this.maxHealth,guard:this.maxGuard,state:'idle',frame:0,facing:this.id?-1:1,move:null,hit:false,stun:0,combo:0,comboUntil:0,dodgeUntil:0,crouching:false,dashUntil:0,dashCooldown:0,attackPosture:'standing',guardRegenAt:0,blockStarted:-100,wasBlocking:false,lastThrowInput:-100,airAttackUsed:false,landingUntil:0,message:'',messageUntil:0,lastAttack:null,lastAttackTick:-100,actionTick:0,flashUntil:0,lastBlocked:false,rollAir:false,airRollUsed:false,rollDuration:0,rollDirection:1,rollCooldown:0,celebrating:false,buffer:null,comboTarget:null,throwUntil:0,throwPartner:null,throwRole:null,throwFromX:0,throwToX:0})}
@@ -17,7 +17,8 @@ export class Fighter {
  this.attackPosture=this.grounded?(this.crouching?'crouching':'standing'):'air';
  if(!this.grounded)this.airAttackUsed=true;
  const signature=type==='special'?SPECIALS[this.character.id]:null;
- this.move={...definition,...(signature?.move||{}),type,recovery:Math.round((signature?.move?.recovery||definition.recovery)*this.style.recovery),...(signature?{label:signature.name,signature:this.character.id}:{})};
+ const move={...definition,...(this.style.moves?.[type]||{}),...(signature?.move||{})};
+ this.move={...move,type,recovery:Math.round(move.recovery*this.style.recovery),...(signature?{label:signature.name,signature:this.character.id}:{})};
  this.hit=false;this.frame=0;this.transition('attack');this.lastAttack=type;this.lastAttackTick=tick;return true;
  }
  startRoll(direction,tick){
@@ -79,7 +80,7 @@ export class Fighter {
  hurtbox(){if(this.state==='roll')return {x:this.x-22,y:400-this.y-(this.rollAir?82:52),w:44,h:52};const low=this.crouching&&this.grounded;return{x:this.x-23,y:400-this.y-(low?65:110),w:46,h:low?65:110}}
  hitbox(){const m=this.move;if(this.state!=='attack'||this.phase!=='ACTIVE')return null;
  const authored=FRAME_HITBOXES[this.style.name]?.[m.type];const custom=typeof authored==='function'?authored(this):authored?.[this.frame];if(custom)return{x:this.x+(this.facing===1?custom.dx:-custom.dx-custom.w),y:400-this.y+custom.dy,w:custom.w,h:custom.h};
- const reach=this.style.reach*m.reach,low=this.attackPosture==='crouching',air=this.attackPosture==='air';
+ const reach=this.style.reach*m.reach,low=attackIsLow(this),air=this.attackPosture==='air';
  return{x:this.facing===1?this.x+8:this.x-reach,y:400-this.y-(low?50:air?75:95),w:reach-8,h:air?85:50};}
 }
 export const overlaps=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -92,7 +93,7 @@ export function resolveCombat(attacker,defender,tick,onHit,confirmed=false){
  attacker.stun=16;defender.stun=16;attacker.move=null;defender.move=null;attacker.transition('hit');defender.transition('hit');
  attacker.x=Math.max(45,Math.min(1155,attacker.x-attacker.facing*18));defender.x=Math.max(45,Math.min(1155,defender.x+attacker.facing*18));defender.say('THROW ESCAPE',tick);onHit(defender.x,335,true,'tech');return;
  }
- const low=attacker.attackPosture==='crouching',overhead=attacker.attackPosture==='air'||attacker.move.type==='heavy'&&!grapple&&!low;
+ const low=attackIsLow(attacker),overhead=attacker.attackPosture==='air'||attacker.move.type==='heavy'&&!grapple&&!low;
  const blocked=defender.state==='block'&&defender.facing!==attacker.facing&&!grapple&&(!low||defender.crouching)&&(!overhead||!defender.crouching);
  if(blocked&&tick-defender.blockStarted<=5){
  attacker.stun=29;attacker.move=null;attacker.transition('hit');defender.guard=Math.min(defender.maxGuard,defender.guard+12);defender.say('PERFECT GUARD',tick);onHit(defender.x,330,true,'parry');return;
